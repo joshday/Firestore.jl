@@ -21,7 +21,7 @@ fdict(x::Real) = D(:doubleValue => Float64(x))
 fdict(x::Dates.TimeType) = D(:timestampValue => string(DateTime(x)) * 'Z')
 fdict(x::String) = D(:stringValue => x)
 fdict(x::Vector) = D(:arrayValue => fdict.(x))
-fdict(x::D) = D(:mapValue => D(k => fdict(v) for (k,v) in x))
+fdict(x::D) = D(:mapValue => D(:fields => D(k => fdict(v) for (k,v) in x)))
 
 
 #-----------------------------------------------------------------------------# Special Values
@@ -53,8 +53,14 @@ function setproject!(s::String)
     project[] = s
 end
 
+# API methods (https://firebase.google.com/docs/firestore/reference/rest/)
+
 function patch(path, doc, proj=Project(project[]))
     HTTP.patch(endpoint(proj) * path, ["Content-Type: application/json"], doc)
 end
+
+get(path, proj=Project(project[])) = HTTP.get(endpoint(proj) * path)
+
+
 
 end # module
