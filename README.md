@@ -54,3 +54,15 @@ Firestore.write("test_collection/test_doc", doc)
 ```julia
 Firestore.read("test_collection/test_doc")
 ```
+
+```
+Dict{Symbol, Any} with 8 entries:
+  :today => DateTime("2021-03-29T00:00:00")
+  :x2    => "a string"
+  :x5    => nothing
+  :x7    => Any[1, "two", Dict(:three=>3)]
+  :x3    => Dict{Symbol, Any}(:sub2=>Any[1, "two"], :sub1=>1)
+  :x4    => false
+  :now   => DateTime("2021-03-29T14:21:17.409")
+  :x1    => 1
+```
