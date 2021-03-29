@@ -6,9 +6,9 @@ This package is unofficial and not sponsored or supported by Google.
 
 ## Setup
 
-- Create a new Firebase project at https://firebase.google.com.
-- Create a Firestore Database in your project.
-- In your `.julia/startup/config.jl` file, add `ENV["FIRESTORE_PROJECT"] = "<my_project_id>"`.
+1. Create a new Firebase project at https://firebase.google.com.
+2. Create a Firestore Database in your project.
+3. In your `.julia/startup/config.jl` file, add `ENV["FIRESTORE_PROJECT"] = "<my_project_id>"`.
   - Alternatively, use `Firestore.set_project!(::String)`.
 
 ## High-Level Usage 
