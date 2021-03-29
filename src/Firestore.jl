@@ -158,7 +158,6 @@ function firestore2julia(x::JSON3.Object)
     elseif prop === :nullValue 
         nothing
     elseif prop === :timestampValue 
-        @info val
         DateTime(val[1:end-1])
     else
         val
