@@ -73,12 +73,14 @@ struct NullValue <: FirestoreType
     NullValue() = new(nothing)
 end
 fval(x::Nothing) = NullValue()
+fval(x::Missing) = NullValue()
 
 #-----------------------------------------------------------------------------# StringValue 
 struct StringValue <: FirestoreType
     stringValue::String
 end
 fval(x::AbstractString) = StringValue(String(x))
+fval(x::Symbol) = fval(string(x))
 
 #-----------------------------------------------------------------------------# TimestampValue
 "A timestamp with microsecond precision."
