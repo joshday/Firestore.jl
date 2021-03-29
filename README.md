@@ -19,15 +19,12 @@ Firestore supports the following datatypes (in Julia-speak):
 - `Int64`
 - `Float64`
 - `Nothing`
-- `AbstractString`
-- `Dates.TimeType`
-- `AbstractDict{String, SupportedType}`
+- `String`
+- `DateTime`
+- `Dict{String, SupportedType}`
 - `Vector{SupportedType}`
 
-However, because Firestore supports concrete types (e.g. not `AbstractDict`), some types will not survive a round trip.  For example:
-
-- An `OrderedDict` will be changed to `Dict`.
-- A `Date` will be changed to `DateTime`.
+Firestore.jl will convert your data into the appropriate type if it is able to do so (e.g. `OrderedDict` -> `Dict`).
 
 ### Write
 
