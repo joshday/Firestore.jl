@@ -1,4 +1,4 @@
-# Firestore
+# Firestore.jl
 
 This package provides utilities for reading & writing Google Firestore documents with Julia using the REST API.
 
