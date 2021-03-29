@@ -2,65 +2,168 @@ module Firestore
 
 using Dates
 using JSON3
-using OrderedCollections
 using HTTP
+using StructTypes: StructTypes
 
-export fdict, Document, NullValue, BooleanValue, IntegerValue, DoubleValue, TimestampValue,
-    StringValue, BytesValue, ReferenceValue, GeoPointValue, ArrayValue, MapValue
+export fval, Fields
 
-const D = OrderedDict
+function __init__()
+    if haskey(ENV, "FIRESTORE_PROJECT")
+        set_project!(ENV["FIRESTORE_PROJECT"])
+    else
+        @warn "No FIRESTORE_PROJECT key found in ENV.  `set_project!` must be called before this package will work properly."
+    end
+end
 
 project = Ref{String}()
 
-document(x::D) = JSON3.write(D(:fields => OrderedDict(k => fdict(v) for (k,v) in x)))
+set_project!(s::String) = (project[] = s)
 
-fdict(x::Nothing) = D(:nullValue => nothing)
-fdict(x::Bool) = D(:booleanValue => x)
-fdict(x::Integer) = D(:integerValue => string(x))
-fdict(x::Real) = D(:doubleValue => Float64(x))
-fdict(x::Dates.TimeType) = D(:timestampValue => string(DateTime(x)) * 'Z')
-fdict(x::String) = D(:stringValue => x)
-fdict(x::Vector) = D(:arrayValue => fdict.(x))
-fdict(x::D) = D(:mapValue => D(:fields => D(k => fdict(v) for (k,v) in x)))
+abstract type FirestoreType end
+StructTypes.StructType(::Type{<:FirestoreType}) = StructTypes.Struct()
 
+fval(x) = error("No Julia-to-Firestore value mapping for $(typeof(x)).")
 
-#-----------------------------------------------------------------------------# Special Values
-struct BytesValue
-    x::String
-end 
-fdict(v::BytesValue) = D(:bytesValue => v.x)
-
-struct ReferenceValue 
-    x::String
-end 
-fdict(v::ReferenceValue) = D(:referenceValue => v.x)
-
-struct GeoPointValue
-    lat::Float64
-    long::Float64
+#-----------------------------------------------------------------------------# Fields/Values
+struct Fields <: FirestoreType
+    fields::Dict{String, FirestoreType}
+    Fields(x::AbstractDict) = new(Dict(string(k) => fval(v) for (k,v) in pairs(x)))
 end
-fdict(v::GeoPointValue) = D(:latitude => v.lat, :longitude => v.long)
+Fields(; kw...) = Fields(Dict(kw))
+
+struct Values <: FirestoreType 
+    values::Vector{FirestoreType}
+end
+Values(args...) = Values(collect(args))
+
+#-----------------------------------------------------------------------------# ArrayValue
+struct ArrayValue <: FirestoreType
+    arrayValue::Values
+end
+fval(x::AbstractVector) = ArrayValue(Values(collect(fval.(x))))
+
+#-----------------------------------------------------------------------------# BooleanValue
+struct BooleanValue <: FirestoreType
+    booleanValue::Bool 
+end
+fval(x::Bool) = BooleanValue(x)
+
+#-----------------------------------------------------------------------------# DoubleValue
+struct DoubleValue <: FirestoreType
+    doubleValue::Float64 
+end
+fval(x::AbstractFloat) = DoubleValue(Float64(x))
+
+#-----------------------------------------------------------------------------# IntegerValue
+struct IntegerValue <: FirestoreType
+    integerValue::String 
+end
+fval(x::Int) = IntegerValue(string(x))
+
+#-----------------------------------------------------------------------------# MapValue 
+struct MapValue <: FirestoreType
+    mapValue::Fields
+end
+fval(x::AbstractDict) = MapValue(Fields(x))
+fval(x::NamedTuple) = fval(Dict(pairs(x)))
+
+#-----------------------------------------------------------------------------# NullValue 
+struct NullValue <: FirestoreType
+    nullValue::Nothing 
+    NullValue() = new(nothing)
+end
+fval(x::Nothing) = NullValue()
+
+#-----------------------------------------------------------------------------# StringValue 
+struct StringValue <: FirestoreType
+    stringValue::String
+end
+fval(x::AbstractString) = StringValue(String(x))
+
+#-----------------------------------------------------------------------------# TimestampValue
+"A timestamp with microsecond precision."
+struct TimestampValue <: FirestoreType
+    timestampValue::String 
+end
+fval(x::Dates.TimeType) = TimestampValue(string(DateTime(x)) * "Z")
+
+#-----------------------------------------------------------------------------# BytesValue
+"A Base64-encoded string."
+struct BytesValue <: FirestoreType
+    bytesValue::String
+end 
+
+#-----------------------------------------------------------------------------# ReferenceValue
+"""
+A Reference to another Firestore document. E.g.
+
+    projects/{project_id}/databases/{databaseId}/documents/{document_path}
+"""
+struct ReferenceValue <: FirestoreType
+    referenceValue::String
+end 
+
+#-----------------------------------------------------------------------------# GeoPointValue
+struct LatLng <: FirestoreType
+    latitude::Float64 
+    longitude::Float64 
+end
+
+"A geo point value representing a point on the surface of Earth."
+struct GeoPointValue <: FirestoreType
+    geoPointValue::LatLng
+end
+
+fval(x::LatLng) = GeoPointValue(x)
 
 #-----------------------------------------------------------------------------# API 
-const URL = "https://firestore.googleapis.com/v1beta1/"
-
-struct Project 
-    name::String
-end
-endpoint(p::Project) = URL * "projects/$(p.name)/databases/(default)/documents/"
-
-function setproject!(s::String)
-    project[] = s
+function endpoint(proj::String; db="(default)", path="temp/temp/")
+    "https://firestore.googleapis.com/v1beta1/projects/$proj/databases/$db/documents/$path"
 end
 
 # API methods (https://firebase.google.com/docs/firestore/reference/rest/)
 
-function patch(path, doc, proj=Project(project[]))
-    HTTP.patch(endpoint(proj) * path, ["Content-Type: application/json"], doc)
+function patch(path::String, doc::Fields, proj::String = project[]; db="(default)")
+    HTTP.patch(endpoint(proj; db, path), ["Content-Type: application/json"], JSON3.write(doc))
 end
 
-get(path, proj=Project(project[])) = HTTP.get(endpoint(proj) * path)
+function post(path::String, doc::Fields, proj::String = project[]; db="(default)")
+    HTTP.post(endpoint(proj; db, path), ["Content-Type: application/json"], JSON3.write(doc))
+end
 
+#-----------------------------------------------------------------------------# get/read
+function write(path::String, doc::AbstractDict; db="(default)", proj=project[])
+    iseven(length(split(path, '/', keepempty=false))) ||
+        error("Path must be split into an even number of subpaths.")
+    patch(path, Fields(doc))
+end
+
+function read(path; db = "(default)", proj=project[]) 
+    res = HTTP.get(endpoint(proj; db, path))
+    fields = JSON3.read(res.body).fields
+    Dict(k => firestore2julia(v) for (k,v) in pairs(fields))
+end
+
+
+
+function firestore2julia(x::JSON3.Object)
+    prop = propertynames(x)[1]
+    val = getproperty(x, prop)
+    if prop === :arrayValue 
+        firestore2julia.(val.values)
+    elseif prop === :mapValue 
+        Dict(field => firestore2julia(val.fields[field]) for field in propertynames(val.fields))
+    elseif prop === :integerValue 
+        parse(Int, val)
+    elseif prop === :nullValue 
+        nothing
+    elseif prop === :timestampValue 
+        @info val
+        DateTime(val[1:end-1])
+    else
+        val
+    end
+end
 
 
 end # module
