@@ -98,3 +98,5 @@ See https://firebase.google.com/docs/firestore/reference/rest#rest-resource:-v1b
     }
   }
   ```
+
+4. Call `get_token!()` and now your requests are authenticated!
