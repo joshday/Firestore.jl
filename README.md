@@ -43,7 +43,7 @@ doc = Dict(
     :x7 => [1, "two", Dict("three" => 3)]
 )
 
-# `patch` will overwrite an existing doc whereas `post` will not
+# `patch` will overwrite an existing doc whereas `createDocument` will not
 Firestore.patch("test_collection/test_doc", doc)
 ```
 
