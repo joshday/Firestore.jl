@@ -13,11 +13,22 @@ function __init__()
     else
         @warn "No FIRESTORE_PROJECT key found in ENV.  `set_project!` must be called before this package will work properly."
     end
+    if haskey(ENV, "FIRESTORE_API_KEY")
+        set_api_key!(ENV["FIRESTORE_API_KEY"])
+    else
+        @warn "No FIRESTORE_API_KEY key found in ENV.  `set_api_key!` must be called before authentication will work."
+    end
 end
 
 project = Ref{String}()
+api_key = Ref{String}()
+token = Ref{String}()
+db = Ref{String}("(default)")
 
 set_project!(s::String) = (project[] = s)
+set_api_key!(s::String) = (api_key[] = s)
+set_token!(s::String) = (token[] = s)
+set_db!(s::String) = (db[] = s)
 
 abstract type FirestoreType end
 StructTypes.StructType(::Type{<:FirestoreType}) = StructTypes.Struct()
@@ -118,37 +129,53 @@ end
 
 fval(x::LatLng) = GeoPointValue(x)
 
+#-----------------------------------------------------------------------------# Auth 
+function get_token!()
+    email = ENV["FIRESTORE_EMAIL"]
+    password = ENV["FIRESTORE_PASSWORD"]
+    url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$(api_key[])"
+	data = JSON3.write(Dict(:email => email, :password => password, :returnSecureToken => true))
+	res = HTTP.post(url, ["Content-Type: application/json"], data)
+	set_token!(JSON3.read(res.body).idToken)
+end
+
 #-----------------------------------------------------------------------------# API 
-function endpoint(proj::String; db="(default)", path="temp/temp/")
-    "https://firestore.googleapis.com/v1beta1/projects/$proj/databases/$db/documents/$path"
-end
-
 # API methods (https://firebase.google.com/docs/firestore/reference/rest/)
+function _url(path::String)
+    "https://firestore.googleapis.com/v1beta1/projects/$(project[])/databases/$(db[])/documents/$path"
+end
+_data(x) = JSON3.write(Fields(x))
 
-function patch(path::String, doc::Fields, proj::String = project[]; db="(default)")
-    HTTP.patch(endpoint(proj; db, path), ["Content-Type: application/json"], JSON3.write(doc))
+function createDocument(path::String, doc::AbstractDict)
+    split_path = split(path, '/'; keepempty=false)
+    documentId = split_path[end]
+    h = ["Authorization" => "Bearer $(token[])", "Content-Type: application/json"]
+    HTTP.post(
+        _url(join(split_path[1:end-1], '/') * "?documentId=$documentId"), 
+        h, 
+        _data(doc)
+    )
 end
 
-function post(path::String, doc::Fields, proj::String = project[]; db="(default)")
-    HTTP.post(endpoint(proj; db, path), ["Content-Type: application/json"], JSON3.write(doc))
-end
+delete(path::String) = HTTP.delete(_url(path), ["Authorization" => "Bearer $(token[])"])
 
-#-----------------------------------------------------------------------------# get/read
-function write(path::String, doc::AbstractDict; db="(default)", proj=project[])
-    iseven(length(split(path, '/', keepempty=false))) ||
-        error("Path must be split into an even number of subpaths.")
-    patch(path, Fields(doc))
-end
-
-function read(path; db = "(default)", proj=project[]) 
-    res = HTTP.get(endpoint(proj; db, path))
+function get(path) 
+    res = HTTP.get(_url(path))
     fields = JSON3.read(res.body).fields
-    Dict(k => firestore2julia(v) for (k,v) in pairs(fields))
+    Dict(k => f2j(v) for (k,v) in pairs(fields))
+end
+
+function patch(path::String, doc::AbstractDict)
+    h = ["Authorization" => "Bearer $(token[])", "Content-Type: application/json"]
+    HTTP.patch(_url(path), h, _data(doc))
 end
 
 
 
-function firestore2julia(x::JSON3.Object)
+
+
+#-----------------------------------------------------------------------------# Firestore-to-Julia
+function f2j(x::JSON3.Object)
     prop = propertynames(x)[1]
     val = getproperty(x, prop)
     if prop === :arrayValue 
@@ -165,6 +192,5 @@ function firestore2julia(x::JSON3.Object)
         val
     end
 end
-
 
 end # module

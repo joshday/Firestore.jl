@@ -43,13 +43,14 @@ doc = Dict(
     :x7 => [1, "two", Dict("three" => 3)]
 )
 
-Firestore.write("test_collection/test_doc", doc)
+# `patch` will overwrite an existing doc whereas `post` will not
+Firestore.patch("test_collection/test_doc", doc)
 ```
 
 ### Read 
 
 ```julia
-Firestore.read("test_collection/test_doc")
+Firestore.get("test_collection/test_doc")
 ```
 
 ```
@@ -62,4 +63,40 @@ Dict{Symbol, Any} with 8 entries:
   :x4    => false
   :now   => DateTime("2021-03-29T14:21:17.409")
   :x1    => 1
+```
+
+## Supported Operations
+
+See https://firebase.google.com/docs/firestore/reference/rest#rest-resource:-v1beta1.projects.databases.documents.
+
+- `createDocument`
+- `delete`
+- `get`
+- `patch`
+
+## Authorization
+
+- NOTE: Currently only email/password-based auth is supported.
+
+### Authenticating Only Yourself
+
+In your Firebase "Authentication" page:
+
+1. Under "Sign-In Method", enable the "Email/Password" provider.
+2. Under "Users", add your email and password.
+3. Add `ENV["FIRESTORE_EMAIL"] = <your email>` and `ENV["FIRESTORE_PASSWORD"] = <your pw>` to your `~/.julia/startup.config.jl` file.
+   
+In your Firebase "Firestore Database" page:
+
+Copy/paste this to your "Rules":
+
+```
+// Allow read/write access on all documents to any user signed in to the application
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
 ```
