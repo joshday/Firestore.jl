@@ -83,13 +83,13 @@ See https://firebase.google.com/docs/firestore/reference/rest#rest-resource:-v1b
 #### In your Firebase "Authentication" page:
 
 1. Go to your Firebase "Authentication" page:
-  a. Under "Sign-In Method", enable the "Email/Password" provider.
-  b. Under "Users", add your email and password.
-  c. Add `ENV["FIRESTORE_EMAIL"] = <your email>` and `ENV["FIRESTORE_PASSWORD"] = <your pw>` to your `~/.julia/startup.config.jl` file.
+    a. Under "Sign-In Method", enable the "Email/Password" provider.
+    b. Under "Users", add your email and password.
+    c. Add `ENV["FIRESTORE_EMAIL"] = <your email>` and `ENV["FIRESTORE_PASSWORD"] = <your pw>` to your `~/.julia/startup.config.jl` file.
 2. Go to your Project Settings (Click the cog next to "Project Overview") page:
-  a. Add `ENV["FIRESTORE_API_KEY"] = <Web API Key>` to your `~/.julia/startup/config.jl`
+    a. Add `ENV["FIRESTORE_API_KEY"] = <Web API Key>` to your `~/.julia/startup/config.jl`
 3. Go to your Firebase "Firestore Database" page:
-  a. Copy/paste this to your "Rules":
+    a. Copy/paste this to your "Rules":
   ```
   // Allow read/write access on all documents to any user signed in to the application
   service cloud.firestore {
