@@ -80,8 +80,6 @@ See https://firebase.google.com/docs/firestore/reference/rest#rest-resource:-v1b
 
 ### Authenticating Only Yourself
 
-#### In your Firebase "Authentication" page:
-
 1. Go to your Firebase "Authentication" page:
   - Under "Sign-In Method", enable the "Email/Password" provider.
   - Under "Users", add your email and password.
