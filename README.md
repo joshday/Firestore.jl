@@ -83,7 +83,7 @@ See https://firebase.google.com/docs/firestore/reference/rest#rest-resource:-v1b
 1. Go to your Firebase "Authentication" page:
   - Under "Sign-In Method", enable the "Email/Password" provider.
   - Under "Users", add your email and password.
-  - Add `ENV["FIRESTORE_EMAIL"] = <your email>` and `ENV["FIRESTORE_PASSWORD"] = <your pw>` to your `~/.julia/startup.config.jl` file.
+  - Add `ENV["FIRESTORE_EMAIL"] = <your email>` and `ENV["FIRESTORE_PASSWORD"] = <your pw>` to your `~/.julia/startup/config.jl` file.
 2. Go to your Project Settings (Click the cog next to "Project Overview") page:
   - Add `ENV["FIRESTORE_API_KEY"] = <Web API Key>` to your `~/.julia/startup/config.jl`
 3. Go to your Firebase "Firestore Database" page:
