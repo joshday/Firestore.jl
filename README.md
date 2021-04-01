@@ -74,7 +74,7 @@ See https://firebase.google.com/docs/firestore/reference/rest#rest-resource:-v1b
 - `get`
 - `patch`
 
-## Authorization
+## Authentication
 
 - NOTE: Currently only email/password-based auth is supported.
 
